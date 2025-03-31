@@ -1,0 +1,7 @@
+flask
+chromadb
+openai
+pydantic
+python-dotenv
+tiktoken
+gunicorn
