@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 import chromadb
 import openai
@@ -7,14 +8,24 @@ from dotenv import load_dotenv, find_dotenv
 from utils import get_embedding
 
 _ = load_dotenv(find_dotenv())
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-client = chromadb.PersistentClient(path = "./app/chroma_db")
+print(os.listdir())
+print(os.environ.get("RAILWAY_ENVIRONMENT"))
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
+
+if os.environ.get("RAILWAY_ENVIRONMENT"):
+    shutil.move("./chroma_db", "./app")
+    db_path = "./app/chroma_db"
+else: 
+    db_path = "./chroma_db"
+
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
+
+client = chromadb.PersistentClient(path = db_path)
 collection = client.get_or_create_collection(name = "clinical_trials")
 
-print(os.environ.get("RAILWAY_ENVIRONMENT"))
-print(os.listdir("./app"))
-print(os.listdir())
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
 print(f"collction size: {collection.count()}")
 
 system_prompt = """
@@ -54,7 +65,7 @@ def get_clinical_trials(
     )
     structured_query = json.loads(llm_response.choices[0].message.content)
     semantic = structured_query["semantic_phrases"]
-    filters = [{k: v} for k, v in structured_query.items() if k != "semantic_phrases" and v != 'ALL']
+    filters = [{k: v} for k, v in structured_query.items() if k != "semantic_phrases" and v != "ALL"]
     print(f"parsed structured filters: {filters}\nparsed semantic search phrases: {semantic}")
     
     where_clause = {"$and": filters} if len(filters) > 1 else (filters[0] if filters else {})
