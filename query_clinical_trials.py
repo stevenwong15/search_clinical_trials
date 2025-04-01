@@ -12,6 +12,7 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 client = chromadb.PersistentClient(path = "./app/chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
+print(os.listdir())
 print(f"collction size: {collection.count()}")
 
 system_prompt = """
