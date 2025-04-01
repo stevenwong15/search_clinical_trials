@@ -9,7 +9,7 @@ from utils import get_embedding
 _ = load_dotenv(find_dotenv())
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-client = chromadb.PersistentClient(path = "./chroma_db")
+client = chromadb.PersistentClient(path = "./app/chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
 system_prompt = """
