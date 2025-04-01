@@ -12,6 +12,8 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 client = chromadb.PersistentClient(path = "./app/chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
+print(f"collction size: {collection.count()}")
+
 system_prompt = """
 You are an assistant that parses clinical trial search queries into structured filters and semantic search phrases.
 
