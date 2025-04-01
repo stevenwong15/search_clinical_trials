@@ -9,7 +9,7 @@ from utils import get_embedding
 _ = load_dotenv(find_dotenv())
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-client = chromadb.PersistentClient(path = "./app/chroma_db")
+client = chromadb.PersistentClient(path = "./chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
 system_prompt = """
@@ -52,7 +52,8 @@ def get_clinical_trials(
     filters = [{k: v} for k, v in structured_query.items() if k != "semantic_phrases" and v != 'ALL']
     print(f"parsed structured filters: {filters}\nparsed semantic search phrases: {semantic}")
     
-    print(f"get_embedding: {get_embedding(semantic)}")
+    where_clause = {"$and": filters} if len(filters) > 1 else (filters[0] if filters else {})
+    print(f"where_clause: {where_clause}")
 
     result = collection.query(
         query_embeddings = get_embedding(semantic),

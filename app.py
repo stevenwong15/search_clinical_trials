@@ -14,7 +14,7 @@ def search():
         return jsonify({'error': 'No query provided'}), 400
     
     try:
-        results = get_clinical_trials(query, n_results=10)
+        results = get_clinical_trials(query, n_results = 10)
         return jsonify(results)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
