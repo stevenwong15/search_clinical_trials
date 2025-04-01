@@ -12,21 +12,20 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 print(os.listdir())
 print(os.environ.get("RAILWAY_ENVIRONMENT"))
-if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("/app"))
 
 if os.environ.get("RAILWAY_ENVIRONMENT"):
-    os.mkdir('./app')
-    shutil.move("./chroma_db", "./app")
-    db_path = "./app/chroma_db"
+    shutil.move("./chroma_db", "/app")
+    db_path = "/app/chroma_db"
 else: 
     db_path = "./chroma_db"
 
-if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("/app"))
 
 client = chromadb.PersistentClient(path = db_path)
 collection = client.get_or_create_collection(name = "clinical_trials")
 
-if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
+if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("/app"))
 print(f"collction size: {collection.count()}")
 
 system_prompt = """
