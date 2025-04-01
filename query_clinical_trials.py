@@ -15,6 +15,7 @@ print(os.environ.get("RAILWAY_ENVIRONMENT"))
 if os.environ.get("RAILWAY_ENVIRONMENT"): print(os.listdir("./app"))
 
 if os.environ.get("RAILWAY_ENVIRONMENT"):
+    os.mkdir('./app')
     shutil.move("./chroma_db", "./app")
     db_path = "./app/chroma_db"
 else: 
