@@ -13,6 +13,7 @@ client = chromadb.PersistentClient(path = "./app/chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
 print(os.environ.get("RAILWAY_ENVIRONMENT"))
+print(os.listdir("./app"))
 print(os.listdir())
 print(f"collction size: {collection.count()}")
 
