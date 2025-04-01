@@ -51,6 +51,8 @@ def get_clinical_trials(
     semantic = structured_query["semantic_phrases"]
     filters = [{k: v} for k, v in structured_query.items() if k != "semantic_phrases" and v != 'ALL']
     print(f"parsed structured filters: {filters}\nparsed semantic search phrases: {semantic}")
+    
+    print(f"get_embedding: {get_embedding(semantic)}")
 
     result = collection.query(
         query_embeddings = get_embedding(semantic),
@@ -58,6 +60,8 @@ def get_clinical_trials(
         where = {"$and": filters} if len(filters) > 1 else (filters[0] if filters else {}),
         include = ["metadatas", "distances"]
     )
+
+    print(f"result: {result}")
 
     result_formatted = []
     for id, distance, metadata in zip(result["ids"][0], result["distances"][0], result["metadatas"][0]):
@@ -70,5 +74,7 @@ def get_clinical_trials(
             "purpose": metadata["purpose"],
             "sponsor": metadata["sponsor"]
         })
+
+    print(f"result_formatted: {result_formatted}")
 
     return result_formatted
