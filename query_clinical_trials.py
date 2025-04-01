@@ -1,5 +1,4 @@
 import os
-import shutil
 import json
 import chromadb
 import openai
@@ -10,25 +9,10 @@ from utils import get_embedding
 _ = load_dotenv(find_dotenv())
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-is_railway = os.environ.get("RAILWAY_ENVIRONMENT") is not None
-if is_railway:
-    source_path = "./chroma_db"
-    target_path = "./app/chroma_db"
-    os.makedirs(target_path, exist_ok=True)
-    if os.path.exists(source_path) and not os.listdir(target_path):
-        for item in os.listdir(source_path):
-            s = os.path.join(source_path, item)
-            d = os.path.join(target_path, item)
-            if os.path.isdir(s):
-                shutil.copytree(s, d, dirs_exist_ok=True)
-            else:
-                shutil.copy2(s, d)
-    client = chromadb.PersistentClient(path=target_path)
-else:
-    client = chromadb.PersistentClient(path="./chroma_db")
-
+client = chromadb.PersistentClient(path = "./app/chroma_db")
 collection = client.get_or_create_collection(name = "clinical_trials")
 
+print(os.environ.get("RAILWAY_ENVIRONMENT"))
 print(os.listdir())
 print(f"collction size: {collection.count()}")
 
