@@ -8,7 +8,7 @@ from utils import get_token, get_embedding
 _ = load_dotenv(find_dotenv())
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-df = pd.read_csv("studies_20240101_20250228.csv")[1:100]
+df = pd.read_csv("studies_20240101_20250430.csv")
 
 # to update:
 # - improve embedding model

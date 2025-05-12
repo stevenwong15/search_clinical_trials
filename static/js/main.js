@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
             displayResults(data);
         })
         .catch(error => {
-            resultsList.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            resultsList.innerHTML = `<div class="no-results">None found: please ask about another clinical trial</div>`;
         });
     }
 
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsList.innerHTML = '';
         
         if (results.length === 0) {
-            resultsList.innerHTML = '<div class="no-results">No clinical trials found matching your query.</div>';
+            resultsList.innerHTML = '<div class="no-results">None found: please ask about another clinical trial</div>';
             return;
         }
 
@@ -58,8 +58,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Format the result item
             resultItem.innerHTML = `
-                <div class="result-number">${index + 1}.</div>
-                <a href="https://clinicaltrials.gov/study/${trial.id}" target="_blank" class="result-title">${trial.title}</a>
+                <div class="result-header">
+                    <span class="result-number">${index + 1}.</span>
+                    <a href="https://clinicaltrials.gov/study/${trial.id}" target="_blank" class="result-title">${trial.title}</a>
+                </div>
                 <div class="result-metadata">
                     <div class="result-field"><span class="field-label">Purpose:</span> ${trial.purpose}</div>
                     <div class="result-field"><span class="field-label">Status:</span> ${trial.status}</div>
