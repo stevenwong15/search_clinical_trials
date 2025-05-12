@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Sort by rank (ascending)
-        results.sort((a, b) => a.rank - b.rank);
+        // Sort by rank (descending)
+        results.sort((a, b) => b.rank - a.rank);
         
         results.forEach((trial, index) => {
             const resultItem = document.createElement('div');

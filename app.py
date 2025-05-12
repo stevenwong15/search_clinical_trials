@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from get_clinical_trials_from_qdrant import get_clinical_trials
+from query_clinical_trials_from_qdrant import get_clinical_trials
 
 app = Flask(__name__)
 

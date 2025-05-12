@@ -8,8 +8,13 @@ from utils import get_embedding
 
 _ = load_dotenv(find_dotenv())
 openai.api_key = os.getenv("OPENAI_API_KEY")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-client = QdrantClient(path="./qdrant_db")
+# client = QdrantClient("localhost", port = 6333)
+client = QdrantClient(
+    url = "https://09ded390-e5ee-4905-80a4-0de54ed1ddd3.us-east4-0.gcp.cloud.qdrant.io:6333", 
+    api_key = QDRANT_API_KEY
+)
 print(f"number of trials in database: {client.get_collection('clinical_trials').points_count}")
 
 system_prompt = """
@@ -73,7 +78,7 @@ def get_clinical_trials(
     results_formatted = []
     for result in results:
         results_formatted.append({
-            "id": f"NCT{result.id}",
+            "id": result.payload["nct_id"],
             "rank": result.score,
             "title": result.payload["brief_title"],
             "status": result.payload["status"],
