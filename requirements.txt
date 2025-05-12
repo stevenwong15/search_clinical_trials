@@ -1,5 +1,5 @@
 flask
-chromadb
+qdrant_client
 openai
 pydantic
 python-dotenv
