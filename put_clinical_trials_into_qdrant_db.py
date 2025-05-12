@@ -17,11 +17,11 @@ df["keywords_tokens"] = df["keywords"].progress_apply(lambda x: len(get_token(x)
 tqdm.pandas(desc = "generating embeddings")
 df["keywords_embeddings"] = df["keywords"].progress_apply(lambda x: get_embedding(x))
 
-# client = QdrantClient("localhost", port = 6333)
-client = QdrantClient(
-    url = "https://09ded390-e5ee-4905-80a4-0de54ed1ddd3.us-east4-0.gcp.cloud.qdrant.io:6333", 
-    api_key = QDRANT_API_KEY
-)
+client = QdrantClient("localhost", port = 6333)
+# client = QdrantClient(
+#     url = "https://09ded390-e5ee-4905-80a4-0de54ed1ddd3.us-east4-0.gcp.cloud.qdrant.io:6333", 
+#     api_key = QDRANT_API_KEY
+# )
 if not client.collection_exists(collection_name = "clinical_trials"):
     client.create_collection(
         collection_name = "clinical_trials",

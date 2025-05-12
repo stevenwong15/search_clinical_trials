@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from query_clinical_trials_from_qdrant import get_clinical_trials
+from query_clinical_trials import get_clinical_trials
 
 app = Flask(__name__)
 
@@ -7,6 +7,7 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
+# for local runs, first start with `docker run -p 6333:6333 qdrant/qdrant`
 @app.route('/search', methods=['POST'])
 def search():
     query = request.json.get('query', '')
