@@ -34,8 +34,7 @@ def get_clinical_trials(location = "United States", min_date = "MIN", max_date =
     
     return studies
 
-studies = get_clinical_trials(location = "United States", min_date = "01/01/2024", max_date = "02/28/2025")
-
+studies = get_clinical_trials(location = "United States", min_date = "01/01/2024", max_date = "04/30/2025")
 
 # to update:
 # - add center location, probably under eligibility
@@ -80,5 +79,5 @@ studies_df["completion_date"] = [date + "-01" if len(date) == 7 else date for da
 studies_df["first_post_date"] = [date + "-01" if len(date) == 7 else date for date in studies_df["first_post_date"]]
 studies_df["last_update_date"] = [date + "-01" if len(date) == 7 else date for date in studies_df["last_update_date"]]
 
-studies_df.to_csv("studies.csv")
-print("wrote to studies.csv")
+studies_df.to_csv("studies_20240101_20250430.csv")
+print("wrote to studies_20240101_20250430.csv")
