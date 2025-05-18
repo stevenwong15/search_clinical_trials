@@ -3,14 +3,20 @@ import pandas as pd
 
 # to update:
 # - decide how to incrementally add studies (e.g. by first_post_date or last_update_date)
-def get_clinical_trials(location = "United States", min_date = "MIN", max_date = "MAX"):
+def get_clinical_trials(
+        location = "United States", 
+        status = "RECRUITING|NOT_YET_RECRUITING", 
+        min_date = "MIN", 
+        max_date = "MAX"
+        ):
 
     print(f"getting clinical trials in {location} first posted from {min_date} to {max_date}")
     base_url = "https://clinicaltrials.gov/api/v2/studies"
     params = {
         "query.locn": location,
+        "filter.overallStatus": status, 
         "filter.advanced": f"AREA[StudyFirstPostDate]RANGE[{min_date}, {max_date}]",
-        # "filter.ids": "NCT06313437", # test case
+        # "filter.ids": "NCT02665065", # test case
         "countTotal": "true",
         "pageSize": 100
         }
@@ -34,7 +40,7 @@ def get_clinical_trials(location = "United States", min_date = "MIN", max_date =
     
     return studies
 
-studies = get_clinical_trials(location = "United States", min_date = "01/01/2024", max_date = "04/30/2025")
+studies = get_clinical_trials(location = "United States")
 
 # to update:
 # - add center location, probably under eligibility
@@ -54,6 +60,11 @@ studies_df = pd.DataFrame([{
         ),
     "sponsor": study["protocolSection"]["sponsorCollaboratorsModule"].get("leadSponsor", {}).get("name", ""),
     "collaborators": [collab["name"] for collab in study["protocolSection"]["sponsorCollaboratorsModule"].get("collaborators", "")],
+    "lat_lon": [
+        [location["geoPoint"]["lat"], location["geoPoint"]["lon"]]
+        for location in study["protocolSection"]["contactsLocationsModule"].get("locations", [])
+        if location.get("geoPoint") and "lat" in location["geoPoint"] and "lon" in location["geoPoint"]
+        ],
     # what is the study about?
     "brief_title": study["protocolSection"]["identificationModule"].get("briefTitle", ""),
     "official_title": study["protocolSection"]["identificationModule"].get("officialTitle", ""),
@@ -79,5 +90,5 @@ studies_df["completion_date"] = [date + "-01" if len(date) == 7 else date for da
 studies_df["first_post_date"] = [date + "-01" if len(date) == 7 else date for date in studies_df["first_post_date"]]
 studies_df["last_update_date"] = [date + "-01" if len(date) == 7 else date for date in studies_df["last_update_date"]]
 
-studies_df.to_csv("studies_20240101_20250430.csv")
-print("wrote to studies_20240101_20250430.csv")
+studies_df.to_csv("studies_looking_for_participants_20250518.csv")
+print("wrote to studies_looking_for_participants_20250518.csv")

@@ -8,7 +8,7 @@ from utils import get_token, get_embedding
 _ = load_dotenv(find_dotenv())
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-df = pd.read_csv("studies_20240101_20250430.csv")
+df = pd.read_csv("studies_looking_for_participants_20250518.csv")
 
 # to update:
 # - improve embedding model
@@ -17,16 +17,16 @@ df["keywords_tokens"] = df["keywords"].progress_apply(lambda x: len(get_token(x)
 tqdm.pandas(desc = "generating embeddings")
 df["keywords_embeddings"] = df["keywords"].progress_apply(lambda x: get_embedding(x))
 
-df.to_csv('studies_20240101_20250430_with_embedding.csv', index=False)
+df.to_csv('studies_looking_for_participants_20250518_with_embedding.csv', index=False)
 
 client = QdrantClient("localhost", port = 6333)
 # client = QdrantClient(
 #     url = "https://09ded390-e5ee-4905-80a4-0de54ed1ddd3.us-east4-0.gcp.cloud.qdrant.io:6333", 
 #     api_key = QDRANT_API_KEY
 # )
-if not client.collection_exists(collection_name = "clinical_trials"):
+if not client.collection_exists(collection_name = "clinical_trials_looking_for_participants"):
     client.create_collection(
-        collection_name = "clinical_trials",
+        collection_name = "clinical_trials_looking_for_participants",
         vectors_config = models.VectorParams(
             size = 1536,
             distance = models.Distance.COSINE
@@ -57,6 +57,7 @@ for start_idx in tqdm(range(0, total_records, BATCH_SIZE), desc="Upserting recor
                 "contact": row["contact"],
                 "sponsor": row["sponsor"],
                 "collaborators": row["collaborators"],
+                "lat_lon": row["lat_lon"],
                 "brief_title": row["brief_title"],
                 "official_title": row["official_title"],
                 "purpose": row["purpose"],
