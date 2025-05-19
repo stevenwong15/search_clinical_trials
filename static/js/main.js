@@ -3,13 +3,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchButton = document.getElementById('search-button');
     const resultsContainer = document.getElementById('results-container');
     const resultsList = document.getElementById('results-list');
-
+    
+    // Map variables
+    let map = null;
+    let markers = [];
+    let activeMarker = null;
+    let markerLayerGroup = null;
+    
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             performSearch();
         }
     });
+
+    function initMap() {
+        if (map) return; // Only initialize once
+        
+        // Create the map with default view of the US
+        map = L.map('map').setView([39.8283, -98.5795], 4);
+        
+        // Add the tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(map);
+        
+        // Create a layer group for markers
+        markerLayerGroup = L.layerGroup().addTo(map);
+    }
 
     function performSearch() {
         const query = searchInput.value.trim();
@@ -34,11 +56,41 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
+            // Initialize map before displaying results
+            initMap();
+            
+            // Clear existing markers
+            if (markerLayerGroup) {
+                markerLayerGroup.clearLayers();
+                markers = [];
+            }
+            
             displayResults(data);
         })
         .catch(error => {
             resultsList.innerHTML = `<div class="no-results">None found: please ask about another clinical trial</div>`;
         });
+    }
+
+    function parseLatLon(latLonStr) {
+        if (!latLonStr || latLonStr === "[]") return [];
+        
+        try {
+            // Safely parse the string representation of arrays
+            // Handle both single arrays and arrays of arrays
+            const parsed = JSON.parse(latLonStr.replace(/'/g, '"'));
+            
+            // If it's a single [lat, lon] pair
+            if (Array.isArray(parsed) && parsed.length === 2 && !Array.isArray(parsed[0])) {
+                return [parsed];
+            }
+            
+            // If it's an array of [lat, lon] pairs
+            return parsed;
+        } catch (e) {
+            console.error('Error parsing lat_lon:', e);
+            return [];
+        }
     }
 
     function displayResults(results) {
@@ -52,9 +104,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Sort by rank (descending)
         results.sort((a, b) => b.rank - a.rank);
         
+        // Collect all locations for map bounds
+        let allLocations = [];
+        
         results.forEach((trial, index) => {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
+            resultItem.dataset.trialId = trial.id;
             
             // Format the result item
             resultItem.innerHTML = `
@@ -74,6 +130,104 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             resultsList.appendChild(resultItem);
+            
+            // Parse lat_lon data
+            const locations = parseLatLon(trial.lat_lon);
+            
+            if (locations.length > 0) {
+                allLocations = allLocations.concat(locations);
+                
+                // Add markers for each location
+                locations.forEach(coords => {
+                    if (coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+                        const marker = L.marker(coords, {
+                            icon: L.divIcon({
+                                className: 'trial-marker',
+                                iconSize: [12, 12]
+                            })
+                        }).addTo(markerLayerGroup);
+                        
+                        // Store reference to the trial
+                        marker.trialId = trial.id;
+                        marker.bindPopup(`<strong>${trial.brief_title}</strong><br>ID: ${trial.id}`);
+                        markers.push(marker);
+                    }
+                });
+            }
+            
+            // Add event listeners for hover effects
+            resultItem.addEventListener('mouseenter', function() {
+                highlightTrial(trial.id, true);
+            });
+            
+            resultItem.addEventListener('mouseleave', function() {
+                highlightTrial(trial.id, false);
+            });
+            
+            resultItem.addEventListener('click', function() {
+                focusOnTrial(trial.id);
+            });
+        });
+        
+        // Set map bounds to fit all markers if we have locations
+        if (allLocations.length > 0) {
+            try {
+                const bounds = L.latLngBounds(allLocations);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            } catch (e) {
+                console.error('Error setting bounds:', e);
+                // Fallback to US view
+                map.setView([39.8283, -98.5795], 4);
+            }
+        }
+    }
+    
+    function highlightTrial(trialId, isHighlighted) {
+        // Highlight/unhighlight result item
+        const resultItems = document.querySelectorAll('.result-item');
+        resultItems.forEach(item => {
+            if (item.dataset.trialId === trialId) {
+                if (isHighlighted) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            }
+        });
+        
+        // Highlight/unhighlight markers
+        markers.forEach(marker => {
+            if (marker.trialId === trialId) {
+                // Update marker style
+                if (isHighlighted) {
+                    marker._icon.classList.add('active');
+                    // Remember active marker for zoom
+                    activeMarker = marker;
+                } else {
+                    marker._icon.classList.remove('active');
+                    activeMarker = null;
+                }
+            }
         });
     }
-}); 
+    
+    function focusOnTrial(trialId) {
+        // Find all markers for this trial
+        const trialMarkers = markers.filter(marker => marker.trialId === trialId);
+        
+        if (trialMarkers.length > 0) {
+            // If multiple markers, create bounds
+            if (trialMarkers.length > 1) {
+                const locations = trialMarkers.map(marker => marker.getLatLng());
+                const bounds = L.latLngBounds(locations);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+                // Single marker
+                map.setView(trialMarkers[0].getLatLng(), 10);
+            }
+            
+            // Open popup for the first marker
+            trialMarkers[0].openPopup();
+        }
+    }
+});

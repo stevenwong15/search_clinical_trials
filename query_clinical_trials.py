@@ -39,10 +39,17 @@ class RESPONSE_FORMAT(BaseModel):
     semantic_phrases: str
 
 def clean_value(value):
-    return (
-        "" if value in (None, "['NA']") 
-        else ", ".join([str(v) for v in ast.literal_eval(value)])
-    )
+    if value is None or value == "['NA']":
+        return ""
+    try:
+        # Try to parse it first to handle various formats
+        parsed_value = ast.literal_eval(value)
+        if isinstance(parsed_value, list):
+            return ", ".join([str(v) for v in parsed_value])
+        return str(parsed_value)
+    except (ValueError, SyntaxError):
+        # If parsing fails, return as is
+        return value
 
 def get_clinical_trials(
     user_message,  
@@ -117,10 +124,7 @@ def get_clinical_trials(
         query_filter = models.Filter(must = qdrant_filters) if qdrant_filters else None
     )
 
-    # tbd on how = 
-    # - location
-    # - treatment
-    # - plain english summary
+    # Format results for display
     results_formatted = []
     for result in results:
         results_formatted.append({
@@ -135,6 +139,7 @@ def get_clinical_trials(
             "sponsor": result.payload["sponsor"],
             "criteria_age": clean_value(result.payload["criteria_age"]),
             "criteria_sex": result.payload["criteria_sex"],
+            "lat_lon": str(result.payload["lat_lon"]),  # Convert to string for JSON serialization
         })
 
     return results_formatted

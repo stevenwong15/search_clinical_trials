@@ -43,7 +43,6 @@ def get_clinical_trials(
 studies = get_clinical_trials(location = "United States")
 
 # to update:
-# - add center location, probably under eligibility
 # - add arm, intervention and outcomes, under treatment
 studies_df = pd.DataFrame([{
     # what is the status of the study? 
