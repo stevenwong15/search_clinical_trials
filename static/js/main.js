@@ -60,12 +60,15 @@ document.addEventListener('DOMContentLoaded', function() {
             resultItem.innerHTML = `
                 <div class="result-header">
                     <span class="result-number">${index + 1}.</span>
-                    <a href="https://clinicaltrials.gov/study/${trial.id}" target="_blank" class="result-title">${trial.title}</a>
+                    <a href="https://clinicaltrials.gov/study/${trial.id}" target="_blank" class="result-title">${trial.brief_title}</a>
                 </div>
                 <div class="result-metadata">
-                    <div class="result-field"><span class="field-label">Purpose:</span> ${trial.purpose}</div>
                     <div class="result-field"><span class="field-label">Status:</span> ${trial.status}</div>
-                    <div class="result-field"><span class="field-label">Type:</span> ${trial.type}</div>
+                    <div class="result-field"><span class="field-label">Condition Treated:</span> ${trial.conditions_treated}</div>
+                    <div class="result-field"><span class="field-label">Type:</span> ${trial.type} ${trial.phase}</div>
+                    <div class="result-field"><span class="field-label">Age Eligibility:</span> ${trial.criteria_age}</div>
+                    <div class="result-field"><span class="field-label">Sex Eligibility:</span> ${trial.criteria_sex}</div>
+                    <div class="result-field"><span class="field-label">Start Date:</span> ${trial.start_date}</div>
                     <div class="result-field"><span class="field-label">Sponsor:</span> ${trial.sponsor}</div>
                 </div>
             `;

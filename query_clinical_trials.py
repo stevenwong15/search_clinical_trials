@@ -1,5 +1,6 @@
 import os
 import json
+import ast
 from qdrant_client import QdrantClient, models
 import openai
 from pydantic import BaseModel
@@ -17,34 +18,44 @@ client = QdrantClient(
 )
 print(f"number of trials in database: {client.get_collection('clinical_trials').points_count}")
 
-system_prompt = """
-You are an assistant that parses clinical trial search queries into structured filters and semantic search phrases.
+SEARCH_INTENT_SYSTEM_PROMPT = """
+You are a doctor, and your task is to parse clinical trial search queries into:
+- structured filters
+- semantic search phrases
 
-Given a natural language query, output:
-1. key: "status". values can be: [ALL, RECRUITING, COMPLETED]
-2. key: "type". values can be: [ALL, INTERVENTIONAL]
-3. key: "semantic_phrases". value: a cleaned-up set of terms on conditions and treatments for semantic embedding search
+Given a user's natural language input, output:
+1. key: "type". values can be: ['', 'OBSERVATIONAL', 'INTERVENTIONAL']
+2. key: "criteria_sex". values can be: ['', 'FEMALE', 'MALE']
+3. key: "criteria_age". values can be: ['', 'CHILD', 'ADULT', 'OLDER_ADULT']
+4. key: "semantic_phrases". value: a cleaned-up set of terms on conditions and treatments for semantic embedding search
 
 Only include values that are explicitly mentioned in the query.
 """
 
 class RESPONSE_FORMAT(BaseModel):
-    status: str
     type: str
+    criteria_sex: str
+    criteria_age: str
     semantic_phrases: str
+
+def clean_value(value):
+    return (
+        "" if value in (None, "['NA']") 
+        else ", ".join([str(v) for v in ast.literal_eval(value)])
+    )
 
 def get_clinical_trials(
     user_message,  
-    system_prompt = system_prompt, 
+    search_intent_system_prompt = SEARCH_INTENT_SYSTEM_PROMPT, 
     n_results = 10,
-    model = "gpt-4o-mini", 
+    model = "gpt-4.1-nano", 
     temperature = 0, 
     max_tokens = 500, 
     response_format = RESPONSE_FORMAT):
 
     llm_response = openai.beta.chat.completions.parse(
         messages = [
-            {"role": "system","content": system_prompt},
+            {"role": "system","content": search_intent_system_prompt},
             {"role": "user", "content": user_message}
         ],
         model = model,
@@ -55,19 +66,50 @@ def get_clinical_trials(
 
     structured_query = json.loads(llm_response.choices[0].message.content)
     semantic = structured_query["semantic_phrases"]
-    filters = [{k: v} for k, v in structured_query.items() if k != "semantic_phrases" and v != "ALL"]
+    filters = {k: v for k, v in structured_query.items() if k != "semantic_phrases"}
     print(f"parsed structured filters: {filters}\nparsed semantic search phrases: {semantic}")
     
+    TYPE_MAP = {
+        "": ["INTERVENTIONAL", "OBSERVATIONAL"],
+        "INTERVENTIONAL": ["INTERVENTIONAL"],
+        "OBSERVATIONAL": ["OBSERVATIONAL"],
+    }
+
+    SEX_MAP = {
+        "": ["ALL", "FEMALE", "MALE"],
+        "FEMALE":["ALL", "FEMALE"],
+        "MALE": ["ALL", "MALE"],
+    }
+
+    AGE_VARIANTS = [
+        "['CHILD']",
+        "['ADULT']",
+        "['OLDER_ADULT']",
+        "['CHILD, ADULT']",
+        "['ADULT, OLDER_ADULT']",
+        "['CHILD', 'ADULT', 'OLDER_ADULT']",
+    ]
+    AGE_MAP = {
+        "": AGE_VARIANTS,
+        "CHILD": [v for v in AGE_VARIANTS if "CHILD" in v],
+        "ADULT": [v for v in AGE_VARIANTS if "ADULT" in v],
+        "OLDER_ADULT": [v for v in AGE_VARIANTS if "OLDER_ADULT" in v],
+    }
+
     qdrant_filters = []
-    for filter_dict in filters:
-        for key, value in filter_dict.items():
-            qdrant_filters.append(
-                models.FieldCondition(
-                    key = key,
-                    match = models.MatchValue(value = value)
+    for key, value in filters.items():
+        qdrant_filters.append(
+            models.FieldCondition(
+                key = key,
+                match = models.models.MatchAny(any = (
+                    TYPE_MAP.get(value) if key == "type"
+                    else SEX_MAP.get(value) if key == "criteria_sex"
+                    else AGE_MAP.get(value) if key == "criteria_age"
+                    else ValueError("error")
+                    )
                 )
             )
-    
+        ) 
     results = client.search(
         collection_name = "clinical_trials",
         query_vector = get_embedding(semantic),
@@ -75,16 +117,24 @@ def get_clinical_trials(
         query_filter = models.Filter(must = qdrant_filters) if qdrant_filters else None
     )
 
+    # tbd on how = 
+    # - location
+    # - treatment
+    # - plain english summary
     results_formatted = []
     for result in results:
         results_formatted.append({
             "id": result.payload["nct_id"],
             "rank": result.score,
-            "title": result.payload["brief_title"],
+            "brief_title": result.payload["brief_title"],
+            "conditions_treated": clean_value(result.payload["conditions_treated"]),
+            "start_date": result.payload["start_date"],
             "status": result.payload["status"],
             "type": result.payload["type"],
-            "purpose": result.payload["purpose"],
-            "sponsor": result.payload["sponsor"]
+            "phase": clean_value(result.payload["phase"]),
+            "sponsor": result.payload["sponsor"],
+            "criteria_age": clean_value(result.payload["criteria_age"]),
+            "criteria_sex": result.payload["criteria_sex"],
         })
 
     return results_formatted
