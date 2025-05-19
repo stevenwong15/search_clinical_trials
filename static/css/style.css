@@ -10,7 +10,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     padding: 20px;
 }
@@ -21,6 +21,15 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 70vh;
+}
+
+.header-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding-bottom: 20px;
 }
 
 .logo {
@@ -73,6 +82,7 @@ body {
     max-width: 800px;
     padding: 20px;
     min-height: 120px;
+    margin: 0 auto;
 }
 
 .result-item {

@@ -8,15 +8,15 @@
 </head>
 <body>
     <div class="container">
-        <div class="search-container">
+        <div class="header-container">
             <h1 class="logo">ClinicalTrials<span class="domain">.gov</span></h1>
             <div class="search-box">
                 <input type="text" id="search-input" placeholder="Ask about a clinical trial..." />
                 <button id="search-button">Search</button>
             </div>
-            <div id="results-container" class="hidden">
-                <div id="results-list"></div>
-            </div>
+        </div>
+        <div id="results-container" class="hidden">
+            <div id="results-list"></div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
