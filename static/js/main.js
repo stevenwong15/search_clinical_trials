@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
             resultItem.dataset.trialId = trial.id;
+            resultItem.id = `trial-${trial.id}`; // Add ID for scrolling
             
             // Format the result item
             resultItem.innerHTML = `
@@ -147,9 +148,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             })
                         }).addTo(markerLayerGroup);
                         
-                        // Store reference to the trial
+                        // Store reference to the trial and index
                         marker.trialId = trial.id;
-                        marker.bindPopup(`<strong>${trial.brief_title}</strong><br>ID: ${trial.id}`);
+                        marker.resultIndex = index + 1;
+                        
+                        // Create popup with just the title as a link
+                        const popupContent = document.createElement('div');
+                        popupContent.innerHTML = `<a href="#" class="popup-link" data-trial-id="${trial.id}"><strong>${marker.resultIndex}. ${trial.brief_title}</strong></a>`;
+                        
+                        // Add click event to the popup content
+                        marker.bindPopup(popupContent);
+                        
+                        // Store the marker
                         markers.push(marker);
                     }
                 });
@@ -169,6 +179,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
+        // Add event listener for popup links (using event delegation)
+        map.on('popupopen', function(e) {
+            const popup = e.popup;
+            const container = popup.getContent();
+            
+            if (container instanceof HTMLElement) {
+                const link = container.querySelector('.popup-link');
+                if (link) {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const trialId = this.getAttribute('data-trial-id');
+                        scrollToResult(trialId);
+                    });
+                }
+            }
+        });
+        
         // Set map bounds to fit all markers if we have locations
         if (allLocations.length > 0) {
             try {
@@ -179,6 +206,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Fallback to US view
                 map.setView([39.8283, -98.5795], 4);
             }
+        }
+    }
+    
+    function scrollToResult(trialId) {
+        const resultItem = document.getElementById(`trial-${trialId}`);
+        if (resultItem) {
+            // Highlight the item
+            highlightTrial(trialId, true);
+            
+            // Scroll the item into view with smooth behavior
+            resultItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add a temporary flash effect
+            resultItem.classList.add('flash');
+            setTimeout(() => {
+                resultItem.classList.remove('flash');
+            }, 1500);
         }
     }
     
