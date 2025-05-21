@@ -77,6 +77,21 @@ body {
     display: none;
 }
 
+/* New style for the search summary banner */
+#search-summary-banner {
+    background-color: #e3f2fd;
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    line-height: 1.4;
+    border-left: 4px solid #2962ff;
+}
+
+.summary-content {
+    color: #333;
+}
+
 #results-container {
     width: 100%;
     margin: 0 auto;

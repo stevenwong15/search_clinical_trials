@@ -98,11 +98,63 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (results.length === 0) {
             resultsList.innerHTML = '<div class="no-results">None found: please ask about another clinical trial</div>';
+            document.getElementById('search-summary-banner').classList.add('hidden');
             return;
         }
 
         // Sort by rank (descending)
         results.sort((a, b) => b.rank - a.rank);
+        
+        // Show search summary banner
+        const searchParams = results.length > 0 ? results[0].search_params : null;
+        if (searchParams) {
+            // Build a human-readable summary
+            let summary = `Showing the top ${results.length} matching `;
+            
+            // Trial type
+            if (searchParams.type) {
+                summary += searchParams.type.toLowerCase() + " ";
+            }
+            
+            // Disease/condition
+            if (searchParams.semantic_phrases) {
+                summary += `trials on ${searchParams.semantic_phrases} `;
+            } else {
+                summary += "trials ";
+            }
+            
+            // Patient criteria
+            let patientCriteria = [];
+            if (searchParams.criteria_sex === 'FEMALE') {
+                patientCriteria.push("women");
+            } else if (searchParams.criteria_sex === 'MALE') {
+                patientCriteria.push("men");
+            }
+            
+            if (searchParams.criteria_age === 'CHILD') {
+                patientCriteria.push("children");
+            } else if (searchParams.criteria_age === 'ADULT') {
+                patientCriteria.push("adults");
+            } else if (searchParams.criteria_age === 'OLDER_ADULT') {
+                patientCriteria.push("older adults");
+            }
+            
+            if (patientCriteria.length > 0) {
+                summary += `for ${patientCriteria.join(" and ")} `;
+            }
+            
+            // Location and distance
+            if (searchParams.location) {
+                summary += `that are within ${searchParams.distance_miles} miles of ${searchParams.location}`;
+            }
+            
+            // Display the summary
+            const summaryBanner = document.getElementById('search-summary-banner');
+            document.getElementById('search-summary-text').textContent = summary;
+            summaryBanner.classList.remove('hidden');
+        } else {
+            document.getElementById('search-summary-banner').classList.add('hidden');
+        }
         
         // Collect all locations for map bounds
         let allLocations = [];
