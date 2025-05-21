@@ -1,6 +1,8 @@
 import os
 import json
 import ast
+import math
+import requests
 from qdrant_client import QdrantClient, models
 import openai
 from pydantic import BaseModel
@@ -54,6 +56,61 @@ def clean_value(value):
     except (ValueError, SyntaxError):
         return value
 
+def haversine(coord1, coord2):
+    """
+    Calculate the great-circle distance between two coordinates
+    in miles using the Haversine formula
+    
+    Parameters:
+    coord1, coord2: [lat, lon] coordinates
+    
+    Returns:
+    Distance in miles
+    """
+    lat1, lon1 = coord1
+    lat2, lon2 = coord2
+    
+    # Convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    r = 3956  # Radius of earth in miles
+    
+    return c * r
+
+def get_coordinates_from_location(location_query):
+    """
+    Get [lat, lon] for a location string using OpenStreetMap Nominatim API
+    
+    Parameters:
+    location_query: String representing location (e.g., "Boston, MA")
+    
+    Returns:
+    [lat, lon] or None if location not found
+    """
+    try:
+        # Use Nominatim API for geocoding (add a user-agent to comply with usage policy)
+        url = f"https://nominatim.openstreetmap.org/search?q={location_query}&format=json&limit=1"
+        headers = {"User-Agent": "ClinicalTrialsSearchApp/1.0"}
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            results = response.json()
+            if results:
+                lat = float(results[0]["lat"])
+                lon = float(results[0]["lon"])
+                return [lat, lon]
+        
+        print(f"Could not geocode location: {location_query}")
+        return None
+    except Exception as e:
+        print(f"Error geocoding location: {str(e)}")
+        return None
+
 def get_clinical_trials(
     user_message,  
     search_intent_system_prompt = SEARCH_INTENT_SYSTEM_PROMPT, 
@@ -61,8 +118,10 @@ def get_clinical_trials(
     model = "gpt-4.1-nano", 
     temperature = 0, 
     max_tokens = 500, 
-    response_format = RESPONSE_FORMAT):
-
+    response_format = RESPONSE_FORMAT,
+    geo_buffer_factor = 10  # Factor to increase initial results for geo filtering
+):
+    # Parse the user query to extract search parameters
     llm_response = openai.beta.chat.completions.parse(
         messages = [
             {"role": "system","content": search_intent_system_prompt},
@@ -130,14 +189,74 @@ def get_clinical_trials(
                     )
                 )
             )
-        ) 
+        )
+        
+    # Determine if we need to do geo-filtering
+    do_geo_filtering = search_params["location"] and search_params["distance_miles"] > 0
+    
+    # Get more initial results if we need to do geo-filtering
+    initial_limit = n_results * geo_buffer_factor if do_geo_filtering else n_results
+    
+    # Get semantic search results
     results = client.search(
         collection_name = "clinical_trials",
         query_vector = get_embedding(semantic),
-        limit = n_results,
+        limit = initial_limit,
         query_filter = models.Filter(must = qdrant_filters) if qdrant_filters else None
     )
 
+    # Apply geo-filtering if location and distance are specified
+    if do_geo_filtering:
+        user_location = get_coordinates_from_location(search_params["location"])
+        if user_location:
+            filtered_results = []
+            max_distance = search_params["distance_miles"]
+            
+            for result in results:
+                # Parse the lat_lon field which contains arrays of [lat, lon]
+                try:
+                    # Handle string representation of array of coordinates
+                    locations_str = result.payload["lat_lon"]
+                    locations = json.loads(locations_str.replace("'", "\""))
+                    
+                    # Check if the locations is itself an array of arrays
+                    if locations and isinstance(locations, list):
+                        if isinstance(locations[0], list):
+                            # It's already an array of [lat, lon] pairs
+                            pass
+                        elif isinstance(locations[0], (int, float)):
+                            # It's a single [lat, lon] pair
+                            locations = [locations]
+                        else:
+                            # Invalid format
+                            continue
+                    
+                    # Check if any location is within the specified distance
+                    within_distance = False
+                    for location in locations:
+                        if len(location) == 2:  # Make sure it's a valid [lat, lon] pair
+                            distance = haversine(user_location, location)
+                            if distance <= max_distance:
+                                within_distance = True
+                                break
+                    
+                    if within_distance:
+                        filtered_results.append(result)
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
+                    print(f"Error parsing locations for trial {result.payload.get('nct_id')}: {str(e)}")
+                    continue
+            
+            # Replace results with geo-filtered results
+            results = filtered_results[:n_results]
+            print(f"Found {len(results)} trials within {max_distance} miles of {search_params['location']}")
+        else:
+            print(f"Warning: Could not geocode location '{search_params['location']}', skipping geo-filtering")
+            results = results[:n_results]
+    else:
+        # If no geo-filtering, just take the top n results
+        results = results[:n_results]
+
+    # Format the results for the frontend
     results_formatted = []
     for result in results:
         results_formatted.append({
