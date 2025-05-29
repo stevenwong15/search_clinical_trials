@@ -452,36 +452,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 summary += searchParams.type.toLowerCase() + " ";
             }
             
-            // Disease/condition
+            // Disease/condition - UPDATED to include the original query
             if (searchParams.semantic_phrases) {
-                summary += `trials on ${searchParams.semantic_phrases} `;
+                summary += `trials on ${searchParams.semantic_phrases}`;
             } else {
-                summary += "trials ";
+                summary += "trials";
             }
             
-            // Patient criteria
+            // Patient criteria - UPDATED to properly show in summary
             let patientCriteria = [];
             if (searchParams.criteria_sex === 'FEMALE') {
-                patientCriteria.push("women");
+                patientCriteria.push("for women");
             } else if (searchParams.criteria_sex === 'MALE') {
-                patientCriteria.push("men");
+                patientCriteria.push("for men");
             }
             
             if (searchParams.criteria_age === 'CHILD') {
-                patientCriteria.push("children");
+                patientCriteria.push("for children");
             } else if (searchParams.criteria_age === 'ADULT') {
-                patientCriteria.push("adults");
+                patientCriteria.push("for adults");
             } else if (searchParams.criteria_age === 'OLDER_ADULT') {
-                patientCriteria.push("older adults");
+                patientCriteria.push("for older adults");
             }
             
+            // Add patient criteria to summary
             if (patientCriteria.length > 0) {
-                summary += `for ${patientCriteria.join(" and ")} `;
+                summary += " " + patientCriteria.join(" ");
             }
             
             // Location and distance
             if (searchParams.location) {
-                summary += `that are within ${searchParams.distance_miles} miles of ${searchParams.location}`;
+                summary += ` that are within ${searchParams.distance_miles} miles of ${searchParams.location}`;
             }
             
             // Display the summary

@@ -20,6 +20,7 @@ client = QdrantClient(
 )
 print(f"number of trials in database: {client.get_collection('clinical_trials').points_count}")
 
+# UPDATED SYSTEM PROMPT - More explicit about extracting age/sex from query
 SEARCH_INTENT_SYSTEM_PROMPT = """
 You are a doctor, and your task is to parse clinical trial search queries into:
 - structured filters
@@ -32,6 +33,23 @@ Given a user's natural language input, output:
 4. key: "location". value: specific location mentioned (city, state, zip code, etc.) or '' if none specified
 5. key: "distance_miles". value: numeric distance in miles or 50 if location specified but no distance
 6. key: "semantic_phrases". value: a cleaned-up set of terms on conditions and treatments for semantic embedding search
+
+IMPORTANT INSTRUCTIONS:
+- Extract demographic criteria (age, sex) into the structured filters, NOT in semantic_phrases
+- For criteria_age: 
+  - "children", "pediatric", "kids" → 'CHILD'
+  - "adults" → 'ADULT'
+  - "older adults", "elderly", "seniors", "geriatric" → 'OLDER_ADULT'
+- Remove demographic terms from semantic_phrases after extracting them as filters
+- semantic_phrases should focus on medical conditions, treatments, and symptoms
+
+Examples:
+- Input: "alzheimer's for older adults" 
+  → criteria_age: 'OLDER_ADULT', semantic_phrases: "alzheimer's"
+- Input: "breast cancer trials for women"
+  → criteria_sex: 'FEMALE', semantic_phrases: "breast cancer"
+- Input: "pediatric asthma studies"
+  → criteria_age: 'CHILD', semantic_phrases: "asthma"
 
 Only include values that are explicitly mentioned in the query.
 If a location is mentioned but no distance, use 50 miles as the default.
@@ -146,8 +164,13 @@ def get_clinical_trials(
     }
     
     filters = {k: v for k, v in structured_query.items() if k in ["type", "criteria_sex", "criteria_age"]}
-    print(f"parsed structured filters: {filters}\nparsed semantic search phrases: {semantic}")
-    print(f"location: {structured_query['location']}, distance: {structured_query['distance_miles']} miles")
+    
+    # DEBUG: Print parsed query to see what's happening
+    print(f"\n=== DEBUG: Query Parsing ===")
+    print(f"Original query: {user_message}")
+    print(f"Parsed structured filters: {filters}")
+    print(f"Parsed semantic search phrases: {semantic}")
+    print(f"Location: {structured_query['location']}, distance: {structured_query['distance_miles']} miles")
     
     TYPE_MAP = {
         "": ["INTERVENTIONAL", "OBSERVATIONAL"],
@@ -178,18 +201,23 @@ def get_clinical_trials(
 
     qdrant_filters = []
     for key, value in filters.items():
-        qdrant_filters.append(
-            models.FieldCondition(
-                key = key,
-                match = models.models.MatchAny(any = (
-                    TYPE_MAP.get(value) if key == "type"
-                    else SEX_MAP.get(value) if key == "criteria_sex"
-                    else AGE_MAP.get(value) if key == "criteria_age"
-                    else ValueError("error")
+        # Only add filter if value is not empty
+        if value:
+            qdrant_filters.append(
+                models.FieldCondition(
+                    key = key,
+                    match = models.models.MatchAny(any = (
+                        TYPE_MAP.get(value) if key == "type"
+                        else SEX_MAP.get(value) if key == "criteria_sex"
+                        else AGE_MAP.get(value) if key == "criteria_age"
+                        else ValueError("error")
+                        )
                     )
                 )
             )
-        )
+    
+    # DEBUG: Print Qdrant filters
+    print(f"Qdrant filters being applied: {qdrant_filters}")
         
     # Determine if we need to do geo-filtering
     do_geo_filtering = search_params["location"] and search_params["distance_miles"] > 0
@@ -204,6 +232,9 @@ def get_clinical_trials(
         limit = initial_limit,
         query_filter = models.Filter(must = qdrant_filters) if qdrant_filters else None
     )
+    
+    # DEBUG: Print number of results before filtering
+    print(f"Number of results from Qdrant: {len(results)}")
 
     # Apply geo-filtering if location and distance are specified
     if do_geo_filtering:
