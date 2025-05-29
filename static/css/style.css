@@ -133,16 +133,19 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
     cursor: pointer;
+    border: 2px solid transparent;
 }
 
 .result-item:hover {
     box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
 }
 
 .result-item.active {
     border: 2px solid #2962ff;
+    box-shadow: 0 5px 20px rgba(41, 98, 255, 0.3);
 }
 
 .result-item.flash {
@@ -221,26 +224,42 @@ body {
 .trial-marker {
     background-color: #2962ff;
     border-radius: 50%;
-    border: 2px solid white;
-    width: 12px !important;
-    height: 12px !important;
-    margin-top: -6px !important;
-    margin-left: -6px !important;
+    border: 3px solid white;
+    width: 16px !important;
+    height: 16px !important;
+    margin-top: -8px !important;
+    margin-left: -8px !important;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
 .trial-marker.active {
     background-color: #ff3d00;
-    width: 20px !important;
-    height: 20px !important;
-    margin-top: -10px !important;
-    margin-left: -10px !important;
+    width: 24px !important;
+    height: 24px !important;
+    margin-top: -12px !important;
+    margin-left: -12px !important;
     z-index: 1000 !important;
+    box-shadow: 0 4px 15px rgba(255, 61, 0, 0.5);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 4px 15px rgba(255, 61, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(255, 61, 0, 0.8);
+    }
+    100% {
+        box-shadow: 0 4px 15px rgba(255, 61, 0, 0.5);
+    }
 }
 
 /* Popup styles */
 .leaflet-popup-content {
-    margin: 8px 12px;
+    margin: 10px 15px;
+    font-size: 14px;
 }
 
 .popup-link {
@@ -254,6 +273,20 @@ body {
     text-decoration: underline;
     background-color: #f5f5f5;
     border-radius: 4px;
+}
+
+/* Search radius circle custom style */
+.leaflet-interactive {
+    cursor: pointer;
+}
+
+/* Override Leaflet's default circle styles for our search radius */
+path.leaflet-interactive {
+    transition: fill-opacity 0.3s ease;
+}
+
+path.leaflet-interactive:hover {
+    fill-opacity: 0.2;
 }
 
 /* Responsive layout */
@@ -276,5 +309,19 @@ body {
         width: 100%;
         height: 50vh;
         position: relative;
+    }
+    
+    .trial-marker {
+        width: 14px !important;
+        height: 14px !important;
+        margin-top: -7px !important;
+        margin-left: -7px !important;
+    }
+    
+    .trial-marker.active {
+        width: 20px !important;
+        height: 20px !important;
+        margin-top: -10px !important;
+        margin-left: -10px !important;
     }
 }

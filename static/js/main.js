@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let markers = [];
     let activeMarker = null;
     let markerLayerGroup = null;
+    let searchLocationMarker = null;
+    let searchRadiusCircle = null;
     
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', function(e) {
@@ -31,6 +33,37 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create a layer group for markers
         markerLayerGroup = L.layerGroup().addTo(map);
+    }
+
+    // Function to calculate zoom level based on radius in miles
+    function getZoomLevelFromRadius(radiusMiles) {
+        // Approximate zoom levels for different radii
+        if (radiusMiles <= 5) return 12;
+        if (radiusMiles <= 10) return 11;
+        if (radiusMiles <= 25) return 10;
+        if (radiusMiles <= 50) return 9;
+        if (radiusMiles <= 100) return 8;
+        if (radiusMiles <= 200) return 7;
+        return 6;
+    }
+
+    // Function to geocode location using Nominatim
+    function geocodeLocation(locationQuery) {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&limit=1`;
+        const headers = {"User-Agent": "ClinicalTrialsSearchApp/1.0"};
+        
+        return fetch(url, { headers })
+            .then(response => response.json())
+            .then(results => {
+                if (results && results.length > 0) {
+                    return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+                }
+                return null;
+            })
+            .catch(error => {
+                console.error('Geocoding error:', error);
+                return null;
+            });
     }
 
     function performSearch() {
@@ -59,10 +92,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize map before displaying results
             initMap();
             
-            // Clear existing markers
+            // Clear existing markers and overlays
             if (markerLayerGroup) {
                 markerLayerGroup.clearLayers();
                 markers = [];
+            }
+            if (searchLocationMarker) {
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            if (searchRadiusCircle) {
+                map.removeLayer(searchRadiusCircle);
+                searchRadiusCircle = null;
             }
             
             displayResults(data);
@@ -93,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayResults(results) {
+    async function displayResults(results) {
         resultsList.innerHTML = '';
         
         if (results.length === 0) {
@@ -105,8 +146,43 @@ document.addEventListener('DOMContentLoaded', function() {
         // Sort by rank (descending)
         results.sort((a, b) => b.rank - a.rank);
         
-        // Show search summary banner
+        // Get search parameters from the first result
         const searchParams = results.length > 0 ? results[0].search_params : null;
+        
+        // Handle map centering based on search location
+        if (searchParams && searchParams.location && searchParams.distance_miles > 0) {
+            // Geocode the search location
+            const searchCoords = await geocodeLocation(searchParams.location);
+            
+            if (searchCoords) {
+                // Center map on search location with appropriate zoom
+                const zoomLevel = getZoomLevelFromRadius(searchParams.distance_miles);
+                map.setView(searchCoords, zoomLevel);
+                
+                // Add a marker for the search location
+                searchLocationMarker = L.marker(searchCoords, {
+                    icon: L.icon({
+                        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMSAxMGMwIDctOSAxMy05IDEzcy05LTYtOS0xM2E5IDkgMCAwIDEgMTggMHoiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEwIiByPSIzIi8+PC9zdmc+',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 30],
+                        popupAnchor: [0, -30]
+                    })
+                }).addTo(map);
+                
+                searchLocationMarker.bindPopup(`<strong>Search Location:</strong><br>${searchParams.location}`);
+                
+                // Add a circle to show the search radius
+                searchRadiusCircle = L.circle(searchCoords, {
+                    radius: searchParams.distance_miles * 1609.34, // Convert miles to meters
+                    color: '#2962ff',
+                    fillColor: '#2962ff',
+                    fillOpacity: 0.1,
+                    weight: 2
+                }).addTo(map);
+            }
+        }
+        
+        // Show search summary banner
         if (searchParams) {
             // Build a human-readable summary
             let summary = `Showing the top ${results.length} matching `;
@@ -156,9 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('search-summary-banner').classList.add('hidden');
         }
         
-        // Collect all locations for map bounds
-        let allLocations = [];
-        
+        // Add trial markers
         results.forEach((trial, index) => {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
@@ -188,8 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const locations = parseLatLon(trial.lat_lon);
             
             if (locations.length > 0) {
-                allLocations = allLocations.concat(locations);
-                
                 // Add markers for each location
                 locations.forEach(coords => {
                     if (coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
@@ -248,15 +320,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Set map bounds to fit all markers if we have locations
-        if (allLocations.length > 0) {
-            try {
-                const bounds = L.latLngBounds(allLocations);
-                map.fitBounds(bounds, { padding: [50, 50] });
-            } catch (e) {
-                console.error('Error setting bounds:', e);
-                // Fallback to US view
-                map.setView([39.8283, -98.5795], 4);
+        // If no search location was specified, fit bounds to all markers
+        if (!searchParams || !searchParams.location || searchParams.distance_miles === 0) {
+            const allLocations = [];
+            markers.forEach(marker => {
+                allLocations.push(marker.getLatLng());
+            });
+            
+            if (allLocations.length > 0) {
+                try {
+                    const bounds = L.latLngBounds(allLocations);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                } catch (e) {
+                    console.error('Error setting bounds:', e);
+                    // Fallback to US view
+                    map.setView([39.8283, -98.5795], 4);
+                }
             }
         }
     }
@@ -297,10 +376,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update marker style
                 if (isHighlighted) {
                     marker._icon.classList.add('active');
+                    // Bring marker to front
+                    marker.setZIndexOffset(1000);
                     // Remember active marker for zoom
                     activeMarker = marker;
                 } else {
                     marker._icon.classList.remove('active');
+                    marker.setZIndexOffset(0);
                     activeMarker = null;
                 }
             }
@@ -318,8 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const bounds = L.latLngBounds(locations);
                 map.fitBounds(bounds, { padding: [50, 50] });
             } else {
-                // Single marker
-                map.setView(trialMarkers[0].getLatLng(), 10);
+                // Single marker - zoom in closer
+                map.setView(trialMarkers[0].getLatLng(), 12);
             }
             
             // Open popup for the first marker
