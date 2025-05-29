@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchButton = document.getElementById('search-button');
     const resultsContainer = document.getElementById('results-container');
     const resultsList = document.getElementById('results-list');
+    const searchSuggestions = document.getElementById('search-suggestions');
     
     // Map variables
     let map = null;
@@ -11,6 +12,244 @@ document.addEventListener('DOMContentLoaded', function() {
     let markerLayerGroup = null;
     let searchLocationMarker = null;
     let searchRadiusCircle = null;
+    
+    // Pool of search suggestions
+    const suggestionPool = [
+        {
+            query: "breast cancer trials within 25 miles of Boston",
+            label: "Breast cancer trials in Boston",
+            icon: "🔬"
+        },
+        {
+            query: "diabetes studies for adults in New York",
+            label: "Diabetes studies in New York",
+            icon: "💉"
+        },
+        {
+            query: "pediatric asthma clinical trials recruiting now",
+            label: "Pediatric asthma trials",
+            icon: "👶"
+        },
+        {
+            query: "phase 3 depression trials for women",
+            label: "Depression trials for women",
+            icon: "🧠"
+        },
+        {
+            query: "observational studies for heart disease within 50 miles of Chicago",
+            label: "Heart disease in Chicago",
+            icon: "❤️"
+        },
+        {
+            query: "alzheimer's trials for older adults",
+            label: "Alzheimer's trials",
+            icon: "🧓"
+        },
+        {
+            query: "lung cancer immunotherapy trials phase 2",
+            label: "Lung cancer immunotherapy",
+            icon: "🫁"
+        },
+        {
+            query: "rheumatoid arthritis studies in California",
+            label: "Arthritis studies in CA",
+            icon: "🦴"
+        },
+        {
+            query: "migraine prevention trials recruiting",
+            label: "Migraine prevention trials",
+            icon: "🤕"
+        },
+        {
+            query: "COPD clinical trials for men over 60",
+            label: "COPD trials for older men",
+            icon: "🫁"
+        },
+        {
+            query: "autism spectrum disorder studies for children",
+            label: "Autism studies for children",
+            icon: "🧩"
+        },
+        {
+            query: "multiple sclerosis trials within 100 miles of Seattle",
+            label: "MS trials in Seattle area",
+            icon: "🧠"
+        },
+        {
+            query: "type 2 diabetes prevention studies",
+            label: "Diabetes prevention studies",
+            icon: "🩺"
+        },
+        {
+            query: "breast cancer vaccine trials phase 1",
+            label: "Breast cancer vaccine trials",
+            icon: "💊"
+        },
+        {
+            query: "parkinson's disease observational studies",
+            label: "Parkinson's studies",
+            icon: "🧠"
+        },
+        {
+            query: "prostate cancer trials for men over 50",
+            label: "Prostate cancer trials",
+            icon: "🔬"
+        },
+        {
+            query: "anxiety disorder studies recruiting in Texas",
+            label: "Anxiety studies in Texas",
+            icon: "😰"
+        },
+        {
+            query: "kidney disease trials phase 2 or 3",
+            label: "Kidney disease trials",
+            icon: "🩺"
+        },
+        {
+            query: "lupus clinical trials for young adults",
+            label: "Lupus trials for young adults",
+            icon: "🦴"
+        },
+        {
+            query: "stroke prevention studies in Philadelphia",
+            label: "Stroke prevention in Philly",
+            icon: "🧠"
+        },
+        {
+            query: "ovarian cancer early detection trials",
+            label: "Ovarian cancer detection",
+            icon: "🔬"
+        },
+        {
+            query: "sleep apnea device trials recruiting",
+            label: "Sleep apnea device trials",
+            icon: "😴"
+        },
+        {
+            query: "IBS clinical trials in Los Angeles area",
+            label: "IBS trials in LA",
+            icon: "🩺"
+        },
+        {
+            query: "psoriasis treatment studies phase 3",
+            label: "Psoriasis treatment studies",
+            icon: "🩹"
+        },
+        {
+            query: "epilepsy medication trials for children",
+            label: "Epilepsy trials for children",
+            icon: "⚡"
+        }
+    ];
+    
+    // Function to get random suggestions
+    function getRandomSuggestions(count = 3) {
+        const shuffled = [...suggestionPool].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    }
+    
+    // Display random suggestions on page load
+    function displaySuggestions() {
+        const suggestionsContainer = document.querySelector('.suggestion-chips');
+        suggestionsContainer.innerHTML = ''; // Clear existing suggestions
+        
+        const randomSuggestions = getRandomSuggestions(3);
+        
+        randomSuggestions.forEach(suggestion => {
+            const chip = document.createElement('button');
+            chip.className = 'suggestion-chip';
+            chip.setAttribute('data-query', suggestion.query);
+            chip.innerHTML = `<span class="chip-icon">${suggestion.icon}</span> ${suggestion.label}`;
+            chip.addEventListener('click', function() {
+                searchInput.value = suggestion.query;
+                performSearch();
+            });
+            suggestionsContainer.appendChild(chip);
+        });
+    }
+    
+    // Display suggestions on page load
+    displaySuggestions();
+    
+    // Smart autocomplete suggestions
+    const conditionKeywords = [
+        'cancer', 'diabetes', 'heart disease', 'alzheimer', 'parkinson', 'asthma', 
+        'COPD', 'arthritis', 'depression', 'anxiety', 'autism', 'epilepsy',
+        'stroke', 'kidney disease', 'liver disease', 'lupus', 'multiple sclerosis',
+        'cystic fibrosis', 'sickle cell', 'HIV', 'hepatitis', 'migraine'
+    ];
+    
+    const trialTypes = [
+        'phase 1', 'phase 2', 'phase 3', 'phase 4', 'observational', 'interventional',
+        'recruiting', 'enrolling', 'pediatric', 'adult', 'older adult'
+    ];
+    
+    const locations = [
+        'near me', 'within 10 miles', 'within 25 miles', 'within 50 miles', 'within 100 miles',
+        'in New York', 'in Los Angeles', 'in Chicago', 'in Houston', 'in Phoenix',
+        'in Philadelphia', 'in San Antonio', 'in San Diego', 'in Dallas', 'in Boston'
+    ];
+    
+    // Add input event listener for smart suggestions
+    let typingTimer;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(typingTimer);
+        const value = this.value.toLowerCase();
+        
+        // Don't show suggestions if query is too short
+        if (value.length < 3) return;
+        
+        typingTimer = setTimeout(() => {
+            // This is where you could show inline suggestions
+            // For now, we'll just log what could be suggested
+            const possibleCompletions = [];
+            
+            // Check for condition matches
+            conditionKeywords.forEach(condition => {
+                if (condition.startsWith(value) || value.includes(condition.substring(0, 3))) {
+                    possibleCompletions.push(condition);
+                }
+            });
+            
+            // Check for location patterns
+            if (value.includes('near') || value.includes('in') || value.includes('within')) {
+                locations.forEach(location => {
+                    if (!value.includes(location) && location.includes(value.split(' ').pop())) {
+                        possibleCompletions.push(value + ' ' + location);
+                    }
+                });
+            }
+            
+            console.log('Possible completions:', possibleCompletions);
+        }, 300);
+    });
+    
+    // Display recent searches
+    function displayRecentSearches() {
+        const recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        const recentSearchesContainer = document.getElementById('recent-searches');
+        const recentSearchesList = document.getElementById('recent-searches-list');
+        
+        if (recentSearches.length > 0) {
+            recentSearchesContainer.classList.remove('hidden');
+            recentSearchesList.innerHTML = '';
+            
+            recentSearches.forEach(search => {
+                const chip = document.createElement('button');
+                chip.className = 'suggestion-chip';
+                chip.setAttribute('data-query', search);
+                chip.innerHTML = `<span class="chip-icon">🕐</span> ${search}`;
+                chip.addEventListener('click', function() {
+                    searchInput.value = search;
+                    performSearch();
+                });
+                recentSearchesList.appendChild(chip);
+            });
+        }
+    }
+    
+    // Display recent searches on page load
+    displayRecentSearches();
     
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', function(e) {
@@ -66,10 +305,28 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    // Handle recent searches
+    function saveRecentSearch(query) {
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        
+        // Remove duplicates and limit to 5 recent searches
+        recentSearches = recentSearches.filter(search => search !== query);
+        recentSearches.unshift(query);
+        recentSearches = recentSearches.slice(0, 5);
+        
+        localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+    }
+    
     function performSearch() {
         const query = searchInput.value.trim();
         if (!query) return;
 
+        // Save to recent searches
+        saveRecentSearch(query);
+        
+        // Hide search suggestions
+        searchSuggestions.style.display = 'none';
+        
         // Show loading indicator
         resultsList.innerHTML = '<div class="loading">Searching...</div>';
         resultsContainer.classList.remove('hidden');
@@ -107,6 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             displayResults(data);
+            
+            // Update recent searches display
+            displayRecentSearches();
         })
         .catch(error => {
             resultsList.innerHTML = `<div class="no-results">None found: please ask about another clinical trial</div>`;

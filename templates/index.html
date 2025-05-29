@@ -12,8 +12,21 @@
         <div class="header-container">
             <h1 class="logo">ClinicalTrials<span class="domain">.gov</span></h1>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Ask about a clinical trial..." />
+                <input type="text" id="search-input" placeholder="Search for clinical trials..." />
                 <button id="search-button">Search</button>
+            </div>
+            <div id="search-suggestions" class="search-suggestions">
+                <p class="suggestions-label">
+                    Try searching for:
+                    <small>(refresh for new suggestions)</small>
+                </p>
+                <div class="suggestion-chips">
+                    <!-- Suggestions will be dynamically added here -->
+                </div>
+                <div id="recent-searches" class="recent-searches hidden">
+                    <p class="suggestions-label">Recent searches:</p>
+                    <div id="recent-searches-list" class="suggestion-chips"></div>
+                </div>
             </div>
         </div>
         <div id="results-container" class="hidden">
