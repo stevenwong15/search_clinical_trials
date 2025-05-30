@@ -35,15 +35,19 @@ Given a user's natural language input, output:
 6. key: "semantic_phrases". value: a cleaned-up set of terms on conditions and treatments for semantic embedding search
 
 IMPORTANT INSTRUCTIONS:
-- Extract demographic criteria (age, sex) into the structured filters, NOT in semantic_phrases
+- ONLY extract demographic criteria that are EXPLICITLY mentioned in the query
+- DO NOT infer or assume demographics based on the medical condition
 - For criteria_age: 
   - "children", "pediatric", "kids" → 'CHILD'
   - "adults" → 'ADULT'
   - "older adults", "elderly", "seniors", "geriatric" → 'OLDER_ADULT'
+  - If no age is mentioned → ''
 - Remove demographic terms from semantic_phrases after extracting them as filters
 - semantic_phrases should focus on medical conditions, treatments, and symptoms
 
 Examples:
+- Input: "alzheimer's" 
+  → criteria_age: '', semantic_phrases: "alzheimer's"
 - Input: "alzheimer's for older adults" 
   → criteria_age: 'OLDER_ADULT', semantic_phrases: "alzheimer's"
 - Input: "breast cancer trials for women"
@@ -290,6 +294,9 @@ def get_clinical_trials(
     # Format the results for the frontend
     results_formatted = []
     for result in results:
+        # Handle missing lat_lon gracefully
+        lat_lon_value = result.payload.get("lat_lon", "[]")
+        
         results_formatted.append({
             "id": result.payload["nct_id"],
             "rank": result.score,
@@ -302,7 +309,7 @@ def get_clinical_trials(
             "sponsor": result.payload["sponsor"],
             "criteria_age": clean_value(result.payload["criteria_age"]),
             "criteria_sex": result.payload["criteria_sex"],
-            "lat_lon": str(result.payload["lat_lon"]),
+            "lat_lon": str(lat_lon_value),
             "search_params": search_params
         })
 

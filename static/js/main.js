@@ -21,8 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: "🔬"
         },
         {
-            query: "diabetes studies for adults in New York",
-            label: "Diabetes studies in New York",
+            query: "diabetes studies for adults in New York City",
+            label: "Diabetes studies in NYC",
             icon: "💉"
         },
         {
@@ -51,8 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: "🫁"
         },
         {
-            query: "rheumatoid arthritis studies in California",
-            label: "Arthritis studies in CA",
+            query: "rheumatoid arthritis studies in Los Angeles",
+            label: "Arthritis studies in LA",
             icon: "🦴"
         },
         {
@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: "🔬"
         },
         {
-            query: "anxiety disorder studies recruiting in Texas",
-            label: "Anxiety studies in Texas",
+            query: "anxiety disorder studies recruiting in Houston",
+            label: "Anxiety studies in Houston",
             icon: "😰"
         },
         {
@@ -126,8 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
             icon: "😴"
         },
         {
-            query: "IBS clinical trials in Los Angeles area",
-            label: "IBS trials in LA",
+            query: "IBS clinical trials in San Diego",
+            label: "IBS trials in San Diego",
             icon: "🩺"
         },
         {
@@ -139,6 +139,36 @@ document.addEventListener('DOMContentLoaded', function() {
             query: "epilepsy medication trials for children",
             label: "Epilepsy trials for children",
             icon: "⚡"
+        },
+        {
+            query: "COVID-19 vaccine trials in Miami",
+            label: "COVID vaccine in Miami",
+            icon: "💉"
+        },
+        {
+            query: "melanoma immunotherapy trials in Denver",
+            label: "Melanoma trials in Denver",
+            icon: "🔬"
+        },
+        {
+            query: "fibromyalgia studies within 50 miles of Atlanta",
+            label: "Fibromyalgia in Atlanta",
+            icon: "🩺"
+        },
+        {
+            query: "macular degeneration trials in Phoenix",
+            label: "Eye disease in Phoenix",
+            icon: "👁️"
+        },
+        {
+            query: "obesity intervention studies in Dallas",
+            label: "Obesity studies in Dallas",
+            icon: "⚖️"
+        },
+        {
+            query: "PTSD clinical trials for veterans in San Antonio",
+            label: "PTSD trials in San Antonio",
+            icon: "🎖️"
         }
     ];
     
@@ -283,7 +313,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (radiusMiles <= 50) return 9;
         if (radiusMiles <= 100) return 8;
         if (radiusMiles <= 200) return 7;
-        return 6;
+        if (radiusMiles <= 300) return 6;
+        if (radiusMiles <= 400) return 5;
+        if (radiusMiles <= 500) return 4;
+        return 4;
     }
 
     // Function to geocode location using Nominatim
